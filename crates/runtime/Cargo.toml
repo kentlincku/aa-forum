@@ -1,0 +1,33 @@
+[package]
+name = "aaf-runtime"
+description = "Execution layer: driver trait, ACP client, command/manual drivers, dispatcher."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "aaf-fake-acp"
+path = "src/bin/fake_acp.rs"
+test = false
+
+[dependencies]
+jiff = "0.2.38"
+regex = "1"
+aaf-contract.workspace = true
+aaf-core.workspace = true
+async-trait.workspace = true
+nix = { version = "0.31.3", features = ["signal", "process"] }
+serde.workspace = true
+serde_json.workspace = true
+sysinfo = { version = "0.39.6", default-features = false, features = ["system"] }
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+async-trait.workspace = true
+serde_json.workspace = true
+tempfile = "3"
+
+[lints]
+workspace = true

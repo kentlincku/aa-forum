@@ -1,0 +1,31 @@
+[workspace]
+resolver = "2"
+members = ["apps/aaf", "crates/contract", "crates/core", "crates/runtime", "crates/api", "crates/features/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+rust-version = "1.85"
+
+[workspace.dependencies]
+aaf-contract = { path = "crates/contract" }
+aaf-core = { path = "crates/core" }
+aaf-runtime = { path = "crates/runtime" }
+aaf-api = { path = "crates/api" }
+anyhow = "1"
+thiserror = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+axum = "0.8"
+clap = { version = "4", features = ["derive", "env"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+async-trait = "0.1"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }

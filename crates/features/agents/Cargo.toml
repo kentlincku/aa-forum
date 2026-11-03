@@ -1,0 +1,33 @@
+[package]
+name = "aaf-feature-agents"
+description = "Agents admin: ACP agent catalog, install, probe, model switching, role CRUD on roles.json, account quota, dashboard."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "aaf-fake-acp-for-agents"
+path = "src/bin/fake_acp.rs"
+test = false
+
+[dependencies]
+aaf-core.workspace = true
+aaf-api.workspace = true
+aaf-runtime.workspace = true
+aaf-contract.workspace = true
+async-trait.workspace = true
+aaf-feature-chat = { path = "../chat" }
+axum.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+rusqlite = "0.40"
+jiff = "0.2.38"
+
+[dev-dependencies]
+tempfile = "3"
+tokio = { workspace = true, features = ["full"] }
+
+[lints]
+workspace = true

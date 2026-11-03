@@ -1,0 +1,31 @@
+[package]
+name = "aaf-feature-files"
+description = "Files page: browse, search, download and upload instance outputs (owner only)."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+aaf-core.workspace = true
+aaf-api.workspace = true
+aaf-contract.workspace = true
+axum.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+futures-util = "0.3"
+tokio-util = { version = "0.7", features = ["io"] }
+bytes = "1"
+getrandom = "0.3"
+hex = "0.4"
+jiff = "0.2.38"
+rustix = { version = "1", features = ["fs"] }
+
+[dev-dependencies]
+axum.workspace = true
+tempfile = "3"
+tokio = { workspace = true, features = ["full"] }
+
+[lints]
+workspace = true

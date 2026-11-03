@@ -1,0 +1,11 @@
+target/
+node_modules/
+.DS_Store
+/var/
+/work/
+/outputs/
+*.sqlite3
+.env
+# web/dist 由 npm run build 產生並內嵌進執行檔；進 git 讓 clone 不需 Node 即可建置
+web/node_modules/
+/dist/

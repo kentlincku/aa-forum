@@ -1,0 +1,24 @@
+[package]
+name = "aaf-feature-skills"
+description = "Skills: instance skills/ library, packs, role/room assignment, version history, composition."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+aaf-core.workspace = true
+aaf-api.workspace = true
+axum.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+jiff = "0.2.38"
+
+[dev-dependencies]
+axum.workspace = true
+tempfile = "3"
+tokio = { workspace = true, features = ["full"] }
+
+[lints]
+workspace = true
