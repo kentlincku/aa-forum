@@ -73,7 +73,11 @@ impl Driver for CommandDriver {
                 let _ = r.record(pid, &self.command.join(" "));
             }
             let mut stdin = child.stdin.take().expect("piped");
-            stdin.write_all(text.as_bytes()).await?;
+            // 指令不讀 stdin 就先結束了（例如 `echo`）：EPIPE 不算失敗，照常讀它的輸出
+            match stdin.write_all(text.as_bytes()).await {
+                Err(e) if e.kind() != std::io::ErrorKind::BrokenPipe => return Err(e.into()),
+                _ => {}
+            }
             drop(stdin);
             let mut stdout = child.stdout.take().expect("piped");
             *self.child.lock().await = Some(child);

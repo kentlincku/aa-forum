@@ -166,6 +166,23 @@ async fn acp_agent_exit_goes_offline() {
     assert_eq!(d.status(), AgentStatus::Offline);
 }
 
+/// 指令不讀 stdin 就結束（例如 `echo`）：寫入提示時的 EPIPE 不算回合失敗，照常取輸出。
+/// 提示比 pipe 緩衝大，讓 macOS 與 Linux 都必定撞到 EPIPE。
+#[tokio::test]
+async fn command_that_ignores_stdin_still_replies() {
+    let d = CommandDriver::new(
+        vec!["/bin/sh".into(), "-c".into(), "echo done".into()],
+        std::env::temp_dir(),
+    );
+    d.start().await.unwrap();
+    let big = "x".repeat(4 * 1024 * 1024);
+    let r = d.prompt(&big).await.unwrap();
+    assert_eq!(
+        (r.stop_reason.as_str(), r.text.as_str()),
+        ("end_turn", "done")
+    );
+}
+
 #[tokio::test]
 async fn command_driver_echo_and_cancel() {
     let d = Arc::new(CommandDriver::new(

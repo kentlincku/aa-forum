@@ -3526,6 +3526,24 @@ async fn new_task(e: &Env, r: i64, title: &str, assignee: Option<&str>) -> i64 {
     t["id"].as_i64().unwrap()
 }
 
+/// 等本群連續 0.3 秒沒有進行中的回合。
+async fn settle_room(e: &Env, r: i64) {
+    let d = e.chat.shared().dispatcher(&e.core);
+    let mut quiet = 0;
+    for _ in 0..400 {
+        if d.busy_in_room(r) {
+            quiet = 0;
+        } else {
+            quiet += 1;
+            if quiet >= 6 {
+                return;
+            }
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    panic!("room {r} still has turns running after 20 s");
+}
+
 fn age(e: &Env, id: i64, secs: i64) {
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -3601,6 +3619,8 @@ async fn stalled_threshold_states_and_lease_expiry() {
         Some(json!({"state": "cancelled", "result": ""})),
     )
     .await;
+    // 停滯清單會略過「負責人正在跑回合」的任務：先等派工通知引起的回合都跑完（慢的 CI 機器上會還在跑）
+    settle_room(&e, r).await;
     age(&e, before, 30 * 60 - 5);
     age(&e, exact, 30 * 60);
     for id in [after, done, cancelled, blocked] {
