@@ -1,0 +1,24 @@
+{
+  "name": "aa-forum",
+  "version": "0.0.0",
+  "description": "Named AI agents (Hermes, Claude Code, Codex, pi) collaborating in chat rooms with a task board and web UI. Installs the aaf command.",
+  "keywords": ["ai", "agents", "acp", "chat", "claude-code", "codex"],
+  "homepage": "https://github.com/kentlincku/aa-forum#readme",
+  "bugs": "https://github.com/kentlincku/aa-forum/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kentlincku/aa-forum.git"
+  },
+  "license": "MIT",
+  "bin": {
+    "aaf": "bin/aaf"
+  },
+  "scripts": {
+    "postinstall": "node install.js"
+  },
+  "files": ["bin/aaf", "lib", "install.js", "README.md", "LICENSE"],
+  "engines": {
+    "node": ">=18"
+  },
+  "optionalDependencies": {}
+}

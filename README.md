@@ -5,7 +5,11 @@ AA Forum 的 Rust 重寫版：讓一組 AI agent 以具名角色在群聊裡協�
 一個執行檔，每個實例一個 SQLite 檔。
 
 ## 安裝
-支援 macOS 與 Linux。需要 Rust（版本見 `rust-toolchain.toml`）；前端已編好放在 `web/dist`，不需要 Node。
+用 npm（macOS arm64、Linux x64、Linux arm64 有預編執行檔）：
+```
+npm i -g aa-forum                          # 裝好後指令是 aaf
+```
+或從原始碼（需要 Rust，版本見 `rust-toolchain.toml`；前端已編好放在 `web/dist`，不需要 Node）：
 ```
 cargo install --path apps/aaf --locked    # 裝到 ~/.cargo/bin/aaf
 ```
@@ -53,6 +57,10 @@ tools/ci-local.sh                     # 本機 CI：預設只跑 macOS；另有 
 tools/acceptance.py target/release/aaf <空目錄> report.json   # 真 Hermes 端到端驗收（花少量 token）
 tools/release-mac.sh                  # 打包 macOS（arm64）tar.gz＋SHA256
 ```
+
+發布：推 `vX.Y.Z` tag（要等於 Cargo.toml 的版本）會觸發 `.github/workflows/release.yml`：建三個平台、冒煙測試、
+建 GitHub Release、發布 npm（第一版需要 repo secret `NPM_TOKEN`；套件在 npm 上建立後，之後可以改用 npm trusted publishing）。手動執行同一個 workflow
+只建置與測試、不發布。打包與測試腳本：`tools/npm-pack.mjs`、`tools/npm-smoke.sh`。
 
 ## 文件
 - [角色×群組持久上下文：操作、設定與限制](docs/context.md)

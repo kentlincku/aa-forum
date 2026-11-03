@@ -4,7 +4,23 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 
 ## [Unreleased]
 
+## [0.2.0] — unreleased · first open-source release, npm packages
+
+### Added
+- **npm install**: `npm i -g aa-forum` installs the `aaf` command. Prebuilt for macOS arm64, Linux x64 and
+  Linux arm64 (static musl); npm downloads only the matching `aa-forum-<os>-<cpu>` package and the install
+  script puts the native binary in place (a Node launcher is the fallback).
+- **Background service from the command line**: `aaf start`, `stop`, `restart`, `status`. `stop` refuses while
+  a turn is running unless `--wait` (until two idle checks) or `--force`.
+- **Start at login**: `aaf service install|uninstall|status` writes a macOS LaunchAgent or a Linux systemd user
+  unit; afterwards start/stop/restart go through launchctl/systemctl.
+- Release workflow: tagged builds, GitHub Release archives with SHA256SUMS, npm publish with provenance.
+
 ### Changed
+- `aaf up` shuts down cleanly on SIGTERM as well as Ctrl-C: dispatch stops, agent process groups are stopped,
+  interrupted turns stay queued (not acknowledged, announced or retried), open HTTP connections get 5 s.
+- `aaf up` records `var/aaf.run.json` (pid, address, version, manager); `doctor` uses that address. Turns left
+  `running` by a crash are marked `incomplete` at the next start. Log output has no colour codes when not a terminal.
 - Agents page tells "CLI installed, ACP adapter missing" apart from "not installed", and checks sign-in whenever
   the CLI is present (catalog `cli_installed` / `adapter_installed`).
 

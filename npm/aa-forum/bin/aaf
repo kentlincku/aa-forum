@@ -1,0 +1,3 @@
+#!/usr/bin/env node
+// Replaced by the native aaf binary at install time (install.js); this launcher is the fallback.
+require('../lib/launcher.js');

@@ -1,0 +1,164 @@
+name: release
+# Push a tag vX.Y.Z (equal to the Cargo.toml workspace version) to build, test and publish:
+# prebuilt binaries for macOS arm64, Linux x64 and Linux arm64 (static musl), a GitHub Release,
+# and the npm packages aa-forum + aa-forum-<os>-<cpu>.
+# Run it by hand (Actions → release → Run workflow) to build and test without publishing.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: macos-latest, target: aarch64-apple-darwin, platform: darwin-arm64 }
+          - { os: ubuntu-latest, target: x86_64-unknown-linux-musl, platform: linux-x64 }
+          - { os: ubuntu-24.04-arm, target: aarch64-unknown-linux-musl, platform: linux-arm64 }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - name: Tag matches Cargo.toml version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          ver=$(sed -n '/^\[workspace.package\]/,/^\[/s/^version = "\(.*\)"/\1/p' Cargo.toml)
+          [ "v$ver" = "$GITHUB_REF_NAME" ] || { echo "tag $GITHUB_REF_NAME != Cargo.toml version $ver"; exit 1; }
+      - name: musl toolchain
+        if: contains(matrix.target, 'musl')
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+      - name: Build
+        env:
+          CC_x86_64_unknown_linux_musl: musl-gcc
+          CC_aarch64_unknown_linux_musl: musl-gcc
+        run: cargo build --release --locked -p aaf --target ${{ matrix.target }}
+      - name: Sign (ad-hoc, macOS)
+        if: runner.os == 'macOS'
+        run: codesign --force --sign - target/${{ matrix.target }}/release/aaf
+      - name: Check the binary
+        run: |
+          bin=target/${{ matrix.target }}/release/aaf
+          file "$bin"
+          "$bin" --version
+          if [ "$RUNNER_OS" = Linux ]; then file "$bin" | grep -q 'static' || { echo "not static"; exit 1; }; fi
+          mkdir -p out && cp "$bin" out/aaf
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aaf-${{ matrix.platform }}
+          path: out/aaf
+          if-no-files-found: error
+
+  package:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v4
+        with:
+          path: bins
+      - name: Pack npm tarballs and release archives
+        run: |
+          chmod +x bins/*/aaf
+          node tools/npm-pack.mjs --out dist/npm \
+            --bin darwin-arm64=bins/aaf-darwin-arm64/aaf \
+            --bin linux-x64=bins/aaf-linux-x64/aaf \
+            --bin linux-arm64=bins/aaf-linux-arm64/aaf
+          ver=$(node -p "require('./dist/npm/stage/aa-forum/package.json').version")
+          mkdir -p dist/release
+          for p in darwin-arm64 linux-x64 linux-arm64; do
+            d="aaf-$ver-$p"; mkdir -p "dist/$d"
+            cp "bins/aaf-$p/aaf" README.md CHANGELOG.md LICENSE "dist/$d/"
+            tar -C dist -czf "dist/release/$d.tar.gz" "$d"
+          done
+          (cd dist/release && sha256sum *.tar.gz > SHA256SUMS.txt)
+      - name: Smoke test (linux-x64)
+        run: bash tools/npm-smoke.sh dist/npm linux-x64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: |
+            dist/npm/*.tgz
+            dist/release/*
+          if-no-files-found: error
+
+  smoke-macos:
+    needs: package
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+      - name: Smoke test (darwin-arm64)
+        run: bash tools/npm-smoke.sh dist/npm darwin-arm64
+
+  smoke-linux-arm64:
+    needs: package
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+      - name: Smoke test (linux-arm64)
+        run: bash tools/npm-smoke.sh dist/npm linux-arm64
+
+  publish:
+    # Only for a pushed tag; a manual run stops after the tests, even when started on a tag.
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    needs: [package, smoke-macos, smoke-linux-arm64]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # GitHub Release
+      id-token: write   # npm provenance / trusted publishing
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - name: GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # A rerun after a failed npm step finds the release already there.
+          if gh release view "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "release $GITHUB_REF_NAME already exists"
+          else
+            gh release create "$GITHUB_REF_NAME" dist/release/* -R "$GITHUB_REPOSITORY" \
+              --title "$GITHUB_REF_NAME" --notes "See CHANGELOG.md. Install: npm i -g aa-forum"
+          fi
+      - name: Publish to npm (platform packages first, aa-forum last)
+        env:
+          # NPM_TOKEN repository secret (required for the first release: npm trusted publishing can
+          # only be set up for packages that already exist). Later releases may drop the secret and
+          # use trusted publishing configured per package on npmjs.com (npm >= 11.5 uses the OIDC token).
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          [ -n "$NODE_AUTH_TOKEN" ] || echo "::notice::NPM_TOKEN is not set: relying on npm trusted publishing (only works for packages already on npm)"
+          npm install -g npm@11
+          ver=${GITHUB_REF_NAME#v}
+          for name in aa-forum-darwin-arm64 aa-forum-linux-x64 aa-forum-linux-arm64 aa-forum; do
+            # A rerun after a partial failure skips what is already on the registry.
+            if npm view "$name@$ver" version >/dev/null 2>&1; then echo "$name@$ver already published"; continue; fi
+            npm publish "dist/npm/$name-$ver.tgz" --access public --provenance
+          done
